@@ -1,44 +1,20 @@
 import pandas as pd
-import numpy as np
 import os, sys
-#from copy import deepcopy
 import glob
-
-
-
-
-
-
-
-
 
 #ESTABLISH INPUT ARGUMENTS
 input_folder = '/home/alex/GIT/tasks/aiddata_2014-12-02-13-56'
 output_folder = '/home/alex/Desktop/combine-dedup-results'
 file_wildcard = '*.csv'
 
-#CALL FUNCTION
-#dedup_and_concat(input_folder, file_wildcard)
-
-
 if not os.path.exists(output_folder):
     os.makedirs(output_folder)
 
-
-
-
-#startTime = datetime.now()
-
-#def dedup_and_concat(input_folder, file_wildcard):
-    #if not os.path.exists(output_folder):
-        #os.makedirs(output_folder)
-
-    #ESTABLISHES LIST OF FILEPATHS
+#ESTABLISH LIST OF FILEPATHS
 wildcard_filepath = os.path.join(input_folder, file_wildcard)
 filepaths_list = glob.glob(wildcard_filepath)
 
-    #SPA MASTER PRODUCTS
-
+#DEFINE DATAFRAMES FOR SPA VARIANTS
 sectorlist = ['Title', 'Short Description', 'Long Description', 'AidData Sector Code']
 purposelist = ['Title', 'Short Description', 'Long Description', 'AidData Purpose Code']
 activitylist = ['Title', 'Short Description', 'Long Description', 'AidData Activity Code(s)']
@@ -47,7 +23,7 @@ master_df_s = pd.DataFrame(columns=sectorlist)
 master_df_p = pd.DataFrame(columns=purposelist)
 master_df_a = pd.DataFrame(columns=activitylist)
 
-
+#DEFINE FUNCTION FOR LATER SORTING OF ACTIVITY CODES
 def stringsort(x):
     entry = x['AidData Activity Code(s)']
     if isinstance(entry, str):
@@ -57,38 +33,14 @@ def stringsort(x):
             entry = '|'.join(code_list)
             return entry
 
-x = 0
-#filepaths_list = [filepaths_list[0]]
+#LOOPS OVER ALL FILES, ADDS ENTRIES TO MASTER, REMOVES RELEVENT EMPTY ROWS
+#x = 0
 for filepath in filepaths_list:
-    x = x + 1
+    #x = x + 1
     #print x
-    #filepath = filepaths_list[0]
     file = pd.read_csv(filepath, quotechar='\"')
 
-        #ELIMINATE ROWS WITH NO ACTIVITY CODES
-        #(DIFFERENTIATES BETWEEN ACTIVITY CODES AND nan VALUES BY >=0)
-    #file = file[file['AidData Activity Code(s)'] >= 0]
-    #series = file['AidData Activity Code(s)']
     file['AidData Activity Code(s)'] = file.apply(stringsort, axis=1)
-
-
-#    test_list = []
-
-    #for entry in series:
-#        if isinstance(entry, str):
-#            if '|' in entry:
-#                code_list = entry.split('|')
-#                code_list.sort()
-#                entry = '|'.join(code_list)
-#                test_list.append(entry)
-#            else:
-#                test_list.append(entry)
-#        else: test_list.append(entry)
-
-
-    #test = pd.Series(test_list)
-
-    #file["AidData Activity Code(s)"] = pd.Series(test_list)
 
     file_s = file[sectorlist]
     file_s = file_s.dropna(subset=["AidData Sector Code"], how='any')
@@ -104,10 +56,16 @@ for filepath in filepaths_list:
     master_df_p = master_df_p.append(file_p)
     master_df_a = master_df_a.append(file_a)
 
+#DROPS DUPLICATES FROM DATAFRAMES
 sector_df = master_df_s.drop_duplicates()
-project_df = master_df_p.drop_duplicates()
+purpose_df = master_df_p.drop_duplicates()
 activity_df = master_df_a.drop_duplicates()
 
-sector_df.to_csv((os.path.join(output_folder, 'sector_data.csv')))
-project_df.to_csv((os.path.join(output_folder, 'project_data.csv')))
-activity_df.to_csv((os.path.join(output_folder, 'activity_data.csv')))
+#CONVERTS SECTOR AND PURPOSE CODE COLUMNS TO INTEGER TYPE
+sector_df[['AidData Sector Code']] = sector_df[['AidData Sector Code']].astype(int)
+purpose_df[['AidData Purpose Code']] = purpose_df[['AidData Purpose Code']].astype(int)
+
+#EXPORTS DATAFRAMES TO TSV FORMAT IN THE DESIGNATED OUTPUT FOLDER
+sector_df.to_csv((os.path.join(output_folder, 'sector_data.tsv')), sep='\t', index=False)
+purpose_df.to_csv((os.path.join(output_folder, 'purpose_data.tsv')), sep='\t', index=False)
+activity_df.to_csv((os.path.join(output_folder, 'activity_data.tsv')), sep='\t', index=False)
